@@ -1,0 +1,18 @@
+{
+  "name": "ai-interview-prep-kit",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace @prep/api\" \"npm run dev --workspace @prep/web\"",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspace @prep/kit-core",
+    "preevaluate": "npm run build --workspace @prep/kit-core",
+    "evaluate": "tsx scripts/evaluate.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

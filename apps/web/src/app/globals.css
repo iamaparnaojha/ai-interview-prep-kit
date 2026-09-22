@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root { --paper: #f3f0e8; --ink: #12211d; --moss: #526b55; --coral: #d7654a; --gold: #d9a441; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: Georgia, 'Times New Roman', serif; }
+button, input, textarea { font: inherit; }
+::selection { background: #d9a44155; }
