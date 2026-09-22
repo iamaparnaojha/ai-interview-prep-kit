@@ -1,0 +1,118 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-09-22T17:33:19.555Z",
+  "kits": [
+    {
+      "id": "case-01",
+      "status": "ok",
+      "kit": {
+        "source": {
+          "company": "localhost",
+          "company_url": "http://localhost:8099/acme/",
+          "role": "Senior Backend Engineer",
+          "location": "",
+          "jd_chars": 143,
+          "researched_at": "2026-09-22T17:33:19.552Z",
+          "pages_used": []
+        },
+        "company_brief": {
+          "summary": "No clear public company summary was found.",
+          "what_they_do": "No public company information was found.",
+          "sources": []
+        },
+        "role": {
+          "title": "Senior Backend Engineer",
+          "seniority": "Senior",
+          "responsibilities": [],
+          "requirements": [
+            {
+              "id": "r1",
+              "text": "Required: TypeScript, Node.js, MongoDB, and experience designing reliable APIs. Preferred: mentoring junior engineers.",
+              "kind": "behavioural",
+              "priority": "nice"
+            }
+          ]
+        },
+        "questions": [
+          {
+            "id": "q1",
+            "requirement_ids": [
+              "r1"
+            ],
+            "category": "behavioural",
+            "prompt": "Describe a situation where you led the design or significant refactoring of a reliable API, potentially involving Node.js and TypeScript, and encountered differing technical opinions or significant architectural challenges within your team. How did you lead the team through the decision-making process, address these challenges or conflicts, and communicate the final design effectively to ensure team alignment and API reliability?",
+            "answer_outline": "Look for a clear STAR response detailing a leadership role in API design/refactoring, use of Node.js/TypeScript (or similar stack if applicable), the specific technical challenges or team disagreements encountered. The candidate should describe their approach to facilitating discussions, resolving conflicts, making architectural decisions, and communicating clearly to achieve a reliable API and team consensus.",
+            "difficulty": 3,
+            "state": "generated"
+          },
+          {
+            "id": "q2",
+            "requirement_ids": [
+              "r1"
+            ],
+            "category": "behavioural",
+            "prompt": "Tell me about a time you contributed to a team project, perhaps involving MongoDB, where you played a crucial role in either mentoring a junior engineer through a complex task or resolving a technical conflict regarding implementation details. How did you approach this situation to foster a collaborative environment, ensure successful task completion or conflict resolution, and what was the impact on the team and project?",
+            "answer_outline": "The candidate should provide a STAR response highlighting their contribution to teamwork, specifically around mentoring a junior engineer or resolving a technical disagreement on a project (ideally involving MongoDB or a similar database). Look for their methods of communication, empathy, problem-solving, and how they ensured a positive team outcome and delivered a successful part of the project.",
+            "difficulty": 2,
+            "state": "generated"
+          }
+        ],
+        "flashcards": [
+          {
+            "id": "f1",
+            "front": "Required: TypeScript, Node.js, MongoDB, and experience designing reliable APIs. Preferred: mentoring junior engineers.",
+            "back": "Review an example and explain how you would apply Required: TypeScript, Node.js, MongoDB, and experience designing reliable APIs. Preferred: mentoring junior engineers..",
+            "requirement_ids": [
+              "r1"
+            ],
+            "state": "generated"
+          }
+        ],
+        "schedule": {
+          "days_available": 5,
+          "days": [
+            {
+              "day": 1,
+              "focus": "behavioural",
+              "question_ids": [
+                "q1"
+              ],
+              "minutes": 45
+            },
+            {
+              "day": 2,
+              "focus": "behavioural",
+              "question_ids": [
+                "q2"
+              ],
+              "minutes": 30
+            },
+            {
+              "day": 3,
+              "focus": "Review and reflection",
+              "question_ids": [],
+              "minutes": 15
+            },
+            {
+              "day": 4,
+              "focus": "Review and reflection",
+              "question_ids": [],
+              "minutes": 15
+            },
+            {
+              "day": 5,
+              "focus": "Review and reflection",
+              "question_ids": [],
+              "minutes": 15
+            }
+          ]
+        },
+        "coverage": {
+          "uncovered_requirement_ids": [],
+          "passes": 1
+        }
+      },
+      "error": null
+    }
+  ]
+}

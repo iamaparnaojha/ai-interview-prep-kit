@@ -1,37 +1,130 @@
 'use client';
-import { ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { LogOut, Diamond } from 'lucide-react';
+import Auth from './components/Auth';
+import Dashboard from './components/Dashboard';
+import Builder from './components/Builder';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-type Kit = any;
-const stages = ['Validating input', 'Extracting requirements', 'Crawling company website', 'Generating questions', 'Checking coverage', 'Building schedule', 'Validating kit'];
-
-async function request(path: string, options: RequestInit = {}) { const response = await fetch(`${API}${path}`, { ...options, credentials: 'include', headers: { 'content-type': 'application/json', ...(options.headers || {}) } }); const body = response.status === 204 ? null : await response.json(); if (!response.ok) throw new Error(body?.error?.message || 'Request failed'); return body; }
+const stages = ['Validating input', 'Extracting requirements', 'Crawling company website', 'Searching public discussion', 'Generating company brief', 'Generating technical questions', 'Generating behavioural questions', 'Generating flashcards', 'Building schedule', 'Validating kit'];
 
 export default function Home() {
-  const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [user, setUser] = useState<any>(null); const [kits, setKits] = useState<any[]>([]); const [selected, setSelected] = useState<any>(null); const [tab, setTab] = useState('overview'); const [status, setStatus] = useState(''); const [loading, setLoading] = useState(false);
-  useEffect(() => { request('/api/auth/me').then((body) => { setUser(body.user); return request('/api/kits'); }).then(setKits).catch(() => undefined); }, []);
-  async function auth(mode: 'register' | 'login') { try { const body = await request(`/api/auth/${mode}`, { method: 'POST', body: JSON.stringify({ email, password }) }); setUser(body.user); setStatus('Signed in'); setKits(await request('/api/kits')); } catch (error) { setStatus(error instanceof Error ? error.message : 'Authentication failed'); } }
-  async function logout() { await request('/api/auth/logout', { method: 'POST' }); setUser(null); setKits([]); setSelected(null); setStatus('Signed out'); }
-  async function create(input: { jd: string; company_url: string; days: number }) { setLoading(true); setStatus('Generating: ' + stages[0]); try { const body = await request('/api/kits', { method: 'POST', body: JSON.stringify(input) }); setSelected(body); setKits([body, ...kits]); setTab('builder'); setStatus('Kit ready'); } catch (error) { setStatus(error instanceof Error ? error.message : 'Generation failed'); } finally { setLoading(false); } }
-  if (!user) return <Auth email={email} password={password} setEmail={setEmail} setPassword={setPassword} auth={auth} status={status} />;
-  return <main className="min-h-screen bg-[#f3f0e8]"><div className="mx-auto max-w-7xl px-6 py-7 md:px-10"><header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#12211d]/20 pb-6"><div><div className="text-sm font-bold uppercase tracking-[0.25em]">Prep / Kit</div><p className="mt-1 text-sm text-[#526b55]">A private preparation studio for {user.email}</p></div><button onClick={logout} className="border border-[#12211d] px-4 py-2 text-xs uppercase tracking-[0.14em]">Log out</button></header>{selected ? <Builder item={selected} tab={tab} setTab={setTab} setSelected={setSelected} setStatus={setStatus} /> : <Dashboard kits={kits} onOpen={(item: any) => { setSelected(item); setTab('builder'); }} onCreate={create} loading={loading} status={status} />}</div></main>;
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [user, setUser] = useState<any>(null);
+  const [kits, setKits] = useState<any[]>([]);
+  const [selected, setSelected] = useState<any>(null);
+  const [tab, setTab] = useState('overview');
+  
+  const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [progressIntervalId, setProgressIntervalId] = useState<NodeJS.Timeout | null>(null);
+
+  async function request(path: string, options: RequestInit = {}) { 
+    const response = await fetch(`${API}${path}`, { 
+      ...options, 
+      credentials: 'include', 
+      headers: { 'content-type': 'application/json', ...(options.headers || {}) } 
+    }); 
+    const body = response.status === 204 ? null : await response.json(); 
+    if (!response.ok) throw new Error(body?.error?.message || 'Request failed'); 
+    return body; 
+  }
+
+  useEffect(() => { 
+    request('/api/auth/me')
+      .then((body) => { 
+        setUser(body.user); 
+        return request('/api/kits'); 
+      })
+      .then(setKits)
+      .catch(() => undefined); 
+  }, []);
+
+  async function auth(mode: 'register' | 'login') { 
+    try { 
+      const body = await request(`/api/auth/${mode}`, { method: 'POST', body: JSON.stringify({ email, password }) }); 
+      setUser(body.user); 
+      setStatus(''); 
+      setKits(await request('/api/kits')); 
+    } catch (error) { 
+      setStatus(error instanceof Error ? error.message : 'Authentication failed'); 
+    } 
+  }
+
+  async function logout() { 
+    await request('/api/auth/logout', { method: 'POST' }); 
+    setUser(null); 
+    setKits([]); 
+    setSelected(null); 
+    setStatus(''); 
+  }
+
+  async function create(input: { jd: string; company_url: string; days: number }) { 
+    setLoading(true); 
+    
+    // Simulate progress updates for long-running generation
+    let stageIndex = 0;
+    setStatus(`Running: ${stages[0]}`);
+    const interval = setInterval(() => {
+      stageIndex = Math.min(stageIndex + 1, stages.length - 1);
+      setStatus(`Running: ${stages[stageIndex]}`);
+    }, 3500); // Update stage visually every 3.5s
+    setProgressIntervalId(interval);
+
+    try { 
+      const body = await request('/api/kits', { method: 'POST', body: JSON.stringify(input) }); 
+      clearInterval(interval);
+      setSelected(body); 
+      setKits([body, ...kits]); 
+      setTab('builder'); 
+      setStatus(''); 
+    } catch (error) { 
+      clearInterval(interval);
+      setStatus(`Failed: ${error instanceof Error ? error.message : 'Generation failed'}`); 
+    } finally { 
+      clearInterval(interval);
+      setLoading(false); 
+    } 
+  }
+
+  if (!user) {
+    return <Auth email={email} password={password} setEmail={setEmail} setPassword={setPassword} auth={auth} status={status} />;
+  }
+
+  return (
+    <main className="min-h-screen bg-[#050810] relative text-white">
+      {/* Universal Background Gradient */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[0%] left-[20%] w-[50%] h-[50%] rounded-full opacity-[0.03] bg-gradient-to-r from-indigo-500 to-purple-500 blur-[100px]" />
+      </div>
+
+      <div className="mx-auto max-w-7xl px-6 py-6 md:px-10 relative z-10">
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800/50 pb-6 mb-8 bg-transparent">
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-center">
+               <Diamond className="w-5 h-5 text-indigo-400" />
+             </div>
+             <div>
+               <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-300">Prep <span className="opacity-50">/</span> Kit</div>
+               <p className="mt-0.5 text-xs text-slate-500 font-mono">{user.email}</p>
+             </div>
+          </div>
+          <button 
+            onClick={logout} 
+            className="flex items-center gap-2 group text-xs uppercase tracking-[0.15em] font-semibold text-slate-400 hover:text-white transition-colors"
+          >
+            Log Out
+            <LogOut className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
+          </button>
+        </header>
+
+        {selected ? (
+          <Builder item={selected} tab={tab} setTab={setTab} setSelected={setSelected} setStatus={setStatus} request={request} />
+        ) : (
+          <Dashboard kits={kits} onOpen={(item: any) => { setSelected(item); setTab('builder'); }} onCreate={create} loading={loading} status={status} request={request} />
+        )}
+      </div>
+    </main>
+  );
 }
-
-function Auth({ email, password, setEmail, setPassword, auth, status }: any) { return <main className="min-h-screen bg-[#12211d] px-6 py-10 text-[#f3f0e8]"><div className="mx-auto max-w-5xl"><p className="text-sm uppercase tracking-[0.25em] text-[#d9a441]">Prep / Kit</p><div className="grid gap-12 py-24 md:grid-cols-[1.2fr_0.8fr] md:items-end"><div><h1 className="text-6xl leading-[0.9] tracking-[-0.04em] md:text-8xl">Prepare with more signal.</h1><p className="mt-7 max-w-lg text-lg leading-8 text-[#c6d0c0]">Research the company, map the role, find the gaps, then rehearse the parts that matter.</p></div><form onSubmit={(event) => { event.preventDefault(); auth('login'); }} className="space-y-4 border-l border-[#d9a441] pl-6"><label className="block text-xs uppercase tracking-[0.2em]">Email<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required className="mt-2 w-full bg-[#f3f0e8] p-3 text-[#12211d]" /></label><label className="block text-xs uppercase tracking-[0.2em]">Password<input value={password} onChange={(event) => setPassword(event.target.value)} type="password" minLength={8} required className="mt-2 w-full bg-[#f3f0e8] p-3 text-[#12211d]" /></label><div className="flex gap-2"><button className="flex-1 bg-[#d7654a] p-3 text-xs font-bold uppercase tracking-[0.15em]">Log in</button><button type="button" onClick={() => auth('register')} className="flex-1 border border-[#f3f0e8] p-3 text-xs font-bold uppercase tracking-[0.15em]">Register</button></div><p role="status" className="min-h-6 text-sm text-[#d9a441]">{status}</p></form></div></div></main>; }
-
-function Dashboard({ kits, onOpen, onCreate, loading, status }: any) { const [jd, setJd] = useState(''); const [url, setUrl] = useState(''); const [days, setDays] = useState(5); const [uploadStatus, setUploadStatus] = useState(''); async function upload(event: ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; if (!file) return; try { const cases = JSON.parse(await file.text()) as Array<{ jd?: string; company_url?: string; days?: number }>; if (!Array.isArray(cases)) throw new Error('Upload must be a JSON array.'); const results: unknown[] = []; for (const item of cases) { if (!item.jd || !item.company_url || !Number.isInteger(item.days)) throw new Error('Every entry needs jd, company_url, and integer days.'); try { results.push(await request('/api/kits', { method: 'POST', body: JSON.stringify({ jd: item.jd, company_url: item.company_url, days: item.days }) })); } catch (error) { results.push({ error: error instanceof Error ? error.message : 'Failed' }); } } setUploadStatus(`${results.length} role(s) processed.`); } catch (error) { setUploadStatus(error instanceof Error ? error.message : 'Invalid upload'); } }
-  return <><section className="grid gap-12 py-16 md:grid-cols-[1.1fr_0.9fr] md:items-end"><div><p className="mb-5 text-sm uppercase tracking-[0.28em] text-[#d7654a]">Your preparation desk</p><h1 className="max-w-3xl text-6xl leading-[0.92] tracking-[-0.04em] md:text-8xl">Know what to practice next.</h1><p className="mt-7 max-w-xl text-lg leading-8 text-[#526b55]">Create a kit, make it yours, and return to it as your interview gets closer.</p></div><div className="border-l-2 border-[#d9a441] pl-6 text-sm leading-6"><strong className="block text-base">Research first. Rehearse second.</strong><span>Each question remains linked to the requirement it covers.</span></div></section><section className="grid gap-8 border-t border-[#12211d]/20 pt-8 lg:grid-cols-[1fr_0.7fr]"><div><label className="mb-2 block text-xs font-bold uppercase tracking-[0.2em]">Job description</label><textarea value={jd} onChange={(event) => setJd(event.target.value)} rows={9} className="w-full border border-[#12211d]/20 bg-white/50 p-4 outline-none focus:border-[#d7654a]" placeholder="Paste a job description..." /></div><div className="space-y-5"><label className="block text-xs font-bold uppercase tracking-[0.2em]">Company website<input value={url} onChange={(event) => setUrl(event.target.value)} className="mt-2 w-full border border-[#12211d]/20 bg-white/50 p-3 outline-none focus:border-[#d7654a]" placeholder="https://company.com" /></label><label className="block text-xs font-bold uppercase tracking-[0.2em]">Days until interview<input type="number" min={1} max={60} value={days} onChange={(event) => setDays(Number(event.target.value))} className="mt-2 w-full border border-[#12211d]/20 bg-white/50 p-3 outline-none focus:border-[#d7654a]" /></label><button disabled={loading} onClick={() => onCreate({ jd, company_url: url, days })} className="w-full bg-[#12211d] p-4 text-xs font-bold uppercase tracking-[0.16em] text-[#f3f0e8] disabled:opacity-50">{loading ? 'Building...' : 'Build interview kit'}</button><label className="block border border-dashed border-[#12211d]/30 p-4 text-sm text-[#526b55]">Prepare multiple roles with JSON<input type="file" accept="application/json,.json" onChange={upload} className="mt-3 block w-full text-xs" /></label><p role="status" className="min-h-6 text-sm text-[#526b55]">{status || uploadStatus}</p></div></section><section className="mt-16 border-t-2 border-[#12211d] pt-8"><div className="flex items-baseline justify-between"><h2 className="text-4xl tracking-[-0.03em]">Your kits</h2><span className="text-sm text-[#526b55]">{kits.length} saved</span></div>{kits.length === 0 ? <p className="mt-8 border border-dashed border-[#12211d]/30 p-8 text-[#526b55]">No interview kits yet. Create your first kit above.</p> : <div className="mt-6 grid gap-4 md:grid-cols-2">{kits.map((item) => <button key={item.id} onClick={() => onOpen(item)} className="border border-[#12211d]/20 bg-white/40 p-5 text-left transition hover:border-[#d7654a]"><span className="text-xs font-bold uppercase tracking-[0.15em] text-[#d7654a]">{item.kit.source.company}</span><h3 className="mt-2 text-2xl">{item.kit.role.title}</h3><p className="mt-3 text-sm text-[#526b55]">{item.kit.schedule.days_available} days · updated {new Date(item.updatedAt).toLocaleDateString()}</p></button>)}</div>}</section></>; }
-
-function Builder({ item, tab, setTab, setSelected, setStatus }: any) { const [kit, setKit] = useState<Kit>(item.kit); const [version, setVersion] = useState(item.version); const [practiceIndex, setPracticeIndex] = useState(0); const [revealed, setRevealed] = useState(false); const tabs = ['overview', 'questions', 'flashcards', 'schedule', 'weak spots']; const cards = useMemo(() => [...kit.flashcards], [kit.flashcards]); async function save(next: Kit) { try { const body = await request(`/api/kits/${item.id}`, { method: 'PATCH', body: JSON.stringify({ kit: next, expectedVersion: version }) }); setKit(body.kit); setVersion(body.version); setStatus('Saved'); } catch (error) { setStatus(error instanceof Error ? error.message : 'Save failed'); } }
-  async function regenerate(category: string) { try { const body = await request(`/api/kits/${item.id}/regenerate/questions/${category}`, { method: 'POST' }); setKit(body.kit); setVersion(body.version); setStatus(`${category} questions regenerated`); } catch (error) { setStatus(error instanceof Error ? error.message : 'Regeneration failed'); } }
-  async function regenerateBrief() { try { const body = await request(`/api/kits/${item.id}/regenerate/company-brief`, { method: 'POST' }); setKit(body.kit); setVersion(body.version); setStatus('Company brief regenerated'); } catch (error) { setStatus(error instanceof Error ? error.message : 'Regeneration failed'); } }
-  async function confidence(value: number) { try { await request(`/api/kits/${item.id}/practice/${cards[practiceIndex].id}/confidence`, { method: 'POST', body: JSON.stringify({ confidence: value }) }); setRevealed(false); setPracticeIndex((practiceIndex + 1) % Math.max(cards.length, 1)); } catch (error) { setStatus(error instanceof Error ? error.message : 'Practice save failed'); } }
-  return <section className="py-10"><button onClick={() => setSelected(null)} className="mb-8 text-xs uppercase tracking-[0.15em] text-[#526b55]">← All kits</button><div className="flex flex-wrap items-end justify-between gap-6 border-b border-[#12211d]/20 pb-7"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#d7654a]">{kit.source.company}</p><h1 className="mt-2 text-5xl tracking-[-0.04em]">{kit.role.title}</h1><p className="mt-3 text-sm text-[#526b55]">{kit.role.requirements.length} requirements · {kit.questions.length} questions · {kit.schedule.days_available} days · {kit.coverage.uncovered_requirement_ids.length} gaps</p></div><p role="status" className="text-sm text-[#526b55]">{status}</p></div><nav className="my-7 flex flex-wrap gap-2">{tabs.map((name) => <button key={name} onClick={() => setTab(name)} className={`border px-4 py-2 text-xs uppercase tracking-[0.12em] ${tab === name ? 'border-[#d7654a] bg-[#d7654a] text-white' : 'border-[#12211d]/20'}`}>{name}</button>)}</nav>{tab === 'overview' && <Overview kit={kit} save={save} regenerate={regenerateBrief} />}{tab === 'questions' && <Questions kit={kit} setKit={setKit} save={save} regenerate={regenerate} />}{tab === 'flashcards' && <Flashcards kit={kit} setKit={setKit} save={save} cards={cards} index={practiceIndex} revealed={revealed} setRevealed={setRevealed} confidence={confidence} />}{tab === 'schedule' && <Schedule kit={kit} />}{tab === 'weak spots' && <WeakSpots item={item} />}</section>; }
-
-function Overview({ kit, save, regenerate }: any) { const [summary, setSummary] = useState(kit.company_brief.summary); const [what, setWhat] = useState(kit.company_brief.what_they_do); return <div className="grid gap-8 md:grid-cols-2"><article className="border border-[#12211d]/20 bg-white/40 p-6"><div className="flex items-center justify-between gap-3"><label className="text-xs font-bold uppercase tracking-[0.15em]">Company brief</label><span className="text-xs text-[#526b55]">AI summary grounded in sources</span></div><label className="mt-5 block text-xs uppercase tracking-[0.12em] text-[#526b55]">Summary<textarea aria-label="Company summary" value={summary} onChange={(event) => setSummary(event.target.value)} className="mt-2 min-h-32 w-full border border-[#12211d]/15 bg-transparent p-3 leading-7" /></label><label className="mt-4 block text-xs uppercase tracking-[0.12em] text-[#526b55]">What they do<textarea aria-label="What the company does" value={what} onChange={(event) => setWhat(event.target.value)} className="mt-2 min-h-40 w-full border border-[#12211d]/15 bg-transparent p-3 leading-7" /></label><div className="mt-4 flex flex-wrap gap-2"><button onClick={() => save({ ...kit, company_brief: { ...kit.company_brief, summary, what_they_do: what } })} className="bg-[#12211d] px-4 py-3 text-xs uppercase tracking-[0.12em] text-white">Save brief</button><button onClick={regenerate} className="border border-[#12211d] px-4 py-3 text-xs uppercase tracking-[0.12em]">Regenerate brief</button></div></article><article className="border border-[#12211d]/20 bg-white/40 p-6"><label className="text-xs font-bold uppercase tracking-[0.15em]">Role map</label><div className="mt-5 space-y-4">{kit.role.requirements.map((item: any) => <div key={item.id} className="border-b border-[#12211d]/10 pb-3"><div className="flex justify-between text-xs uppercase tracking-[0.12em] text-[#526b55]"><span>{item.id} · {item.kind}</span><span>{item.priority}</span></div><p className="mt-1">{item.text}</p></div>)}</div></article></div>; }
-function Questions({ kit, setKit, save, regenerate }: any) { function update(id: string, field: string, value: any) { setKit({ ...kit, questions: kit.questions.map((question: any) => question.id === id ? { ...question, [field]: value, state: 'edited' } : question) }); } function remove(id: string) { const questions = kit.questions.filter((question: any) => question.id !== id); setKit({ ...kit, questions, schedule: { ...kit.schedule, days: kit.schedule.days.map((day: any) => ({ ...day, question_ids: day.question_ids.filter((questionId: string) => questionId !== id) })) } }); } function move(id: string, direction: number) { const index = kit.questions.findIndex((question: any) => question.id === id); const target = index + direction; if (index < 0 || target < 0 || target >= kit.questions.length) return; const questions = [...kit.questions]; [questions[index], questions[target]] = [questions[target], questions[index]]; setKit({ ...kit, questions }); }
- return <div><div className="mb-5 flex flex-wrap gap-2"><button onClick={() => setKit({ ...kit, questions: [...kit.questions, { id: `manual-${Date.now()}`, requirement_ids: kit.role.requirements[0] ? [kit.role.requirements[0].id] : [], category: 'technical', prompt: 'Write your interview question...', answer_outline: 'Write your answer outline...', difficulty: 2, state: 'pinned' }] })} className="bg-[#d7654a] px-3 py-2 text-xs uppercase tracking-[0.1em] text-white">+ Add question</button>{['technical', 'behavioural', 'system-design', 'company-fit'].map((category) => <button key={category} onClick={() => regenerate(category)} className="border border-[#12211d]/20 px-3 py-2 text-xs uppercase tracking-[0.1em]">Regenerate {category}</button>)}</div><div className="space-y-4">{kit.questions.map((question: any, index: number) => <article key={question.id} className="border border-[#12211d]/20 bg-white/40 p-5"><div className="flex flex-wrap gap-2"><select value={question.category} onChange={(event) => update(question.id, 'category', event.target.value)} className="border border-[#12211d]/15 bg-transparent px-2 py-1 text-xs uppercase"><option>technical</option><option>behavioural</option><option>system-design</option><option>company-fit</option></select><select value={question.difficulty} onChange={(event) => update(question.id, 'difficulty', Number(event.target.value))} className="border border-[#12211d]/15 bg-transparent px-2 py-1 text-xs"><option value={1}>Easy</option><option value={2}>Medium</option><option value={3}>Hard</option></select><button onClick={() => move(question.id, -1)} aria-label="Move question up" className="border px-2 text-xs">↑</button><button onClick={() => move(question.id, 1)} aria-label="Move question down" className="border px-2 text-xs">↓</button><button onClick={() => remove(question.id)} className="ml-auto text-xs uppercase text-[#d7654a]">Delete</button></div><textarea value={question.prompt} onChange={(event) => update(question.id, 'prompt', event.target.value)} className="mt-4 min-h-20 w-full border border-[#12211d]/15 bg-transparent p-3 text-lg" /><textarea value={question.answer_outline} onChange={(event) => update(question.id, 'answer_outline', event.target.value)} className="mt-3 min-h-20 w-full border border-[#12211d]/15 bg-transparent p-3" /><div className="mt-3 flex items-center justify-between text-xs text-[#526b55]"><span>Requirement IDs: {question.requirement_ids.join(', ')}</span><button onClick={() => update(question.id, 'state', 'pinned')} className="border border-[#d9a441] px-3 py-1 uppercase">Pin</button></div></article>)}</div><button onClick={() => save(kit)} className="mt-6 bg-[#12211d] px-5 py-3 text-xs uppercase tracking-[0.14em] text-white">Save question edits</button></div>; }
-function Flashcards({ kit, setKit, save, cards, index, revealed, setRevealed, confidence }: any) { const card = cards[index]; function update(id: string, field: string, value: string) { setKit({ ...kit, flashcards: kit.flashcards.map((item: any) => item.id === id ? { ...item, [field]: value, state: 'edited' } : item) }); } function add() { setKit({ ...kit, flashcards: [...kit.flashcards, { id: `manual-card-${Date.now()}`, front: 'New flashcard prompt', back: 'New flashcard answer', requirement_ids: kit.role.requirements[0] ? [kit.role.requirements[0].id] : [], state: 'pinned' }] }); } function remove(id: string) { setKit({ ...kit, flashcards: kit.flashcards.filter((item: any) => item.id !== id) }); }
-  return <div className="space-y-8"><div className="flex justify-between"><h2 className="text-3xl">Practice deck</h2><button onClick={add} className="bg-[#d7654a] px-3 py-2 text-xs uppercase tracking-[0.1em] text-white">+ Add flashcard</button></div>{card && <div className="mx-auto max-w-2xl border border-[#12211d]/20 bg-white/40 p-8"><div className="flex justify-between text-xs uppercase tracking-[0.15em] text-[#526b55]"><span>Practice mode</span><span>Card {index + 1} of {cards.length}</span></div><h2 className="mt-10 text-4xl leading-tight">{card.front}</h2>{revealed && <p className="mt-8 border-l-2 border-[#d9a441] pl-4 leading-7">{card.back}</p>}<button onClick={() => setRevealed(!revealed)} className="mt-10 w-full border border-[#12211d] p-3 text-xs uppercase tracking-[0.14em]">{revealed ? 'Hide answer' : 'Reveal answer'}</button>{revealed && <div className="mt-7"><p className="text-xs uppercase tracking-[0.15em] text-[#526b55]">Confidence</p><div className="mt-3 grid grid-cols-5 gap-2">{[1, 2, 3, 4, 5].map((value) => <button key={value} onClick={() => confidence(value)} className="border border-[#12211d]/20 p-3 text-lg hover:border-[#d7654a]">{value}</button>)}</div></div>}</div>}{kit.flashcards.map((item: any) => <article key={item.id} className="border border-[#12211d]/20 bg-white/40 p-4"><div className="flex gap-2"><input value={item.front} onChange={(event) => update(item.id, 'front', event.target.value)} className="flex-1 border border-[#12211d]/15 bg-transparent p-2" /><button onClick={() => remove(item.id)} className="text-xs uppercase text-[#d7654a]">Delete</button></div><textarea value={item.back} onChange={(event) => update(item.id, 'back', event.target.value)} className="mt-2 min-h-16 w-full border border-[#12211d]/15 bg-transparent p-2" /></article>)}<button onClick={() => save(kit)} className="bg-[#12211d] px-5 py-3 text-xs uppercase tracking-[0.14em] text-white">Save flashcards</button></div>; }
-function Schedule({ kit }: any) { return <div className="grid gap-4 md:grid-cols-2">{kit.schedule.days.map((day: any) => <article key={day.day} className="border border-[#12211d]/20 bg-white/40 p-5"><div className="flex justify-between"><span className="text-xs font-bold uppercase tracking-[0.15em] text-[#d7654a]">Day {day.day}</span><span className="text-sm text-[#526b55]">{day.minutes} min</span></div><h3 className="mt-3 text-2xl">{day.focus}</h3><p className="mt-2 text-sm text-[#526b55]">{day.question_ids.length} questions assigned</p></article>)}</div>; }
-function WeakSpots({ item }: any) { const [data, setData] = useState<any>(null); useEffect(() => { request(`/api/kits/${item.id}/weak-spots`).then(setData).catch(() => undefined); }, [item.id]); return <div className="border border-[#12211d]/20 bg-white/40 p-6"><h2 className="text-3xl">Weak Spots</h2><p className="mt-2 text-sm text-[#526b55]">Practice history prioritizes the cards you know least confidently.</p>{data ? <div className="mt-6 space-y-3">{data.weak_spots.map((entry: any) => <div key={entry.card.id} className="flex justify-between border-b border-[#12211d]/10 pb-3"><span>{entry.card.front}</span><span className="text-sm text-[#d7654a]">{entry.progress?.confidence ?? 'untried'} / 5</span></div>)}</div> : <p className="mt-6 text-sm">Loading practice history...</p>}</div>; }
