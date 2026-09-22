@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "outDir": "dist", "noEmit": false, "baseUrl": ".", "paths": { "@prep/kit-core": ["../../packages/kit-core/src"] } },
+  "compilerOptions": { "rootDir": "src", "outDir": "dist", "noEmit": false },
   "include": ["src/**/*.ts"]
 }

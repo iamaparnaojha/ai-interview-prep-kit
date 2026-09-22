@@ -80,7 +80,7 @@ Tests cover exact schedule lengths for 1, 2, 5, and 60 days, must-have coverage 
 
 ## Deployment
 
-Deploy `apps/web` to Vercel with `NEXT_PUBLIC_API_URL` pointing at the Render API. Deploy `apps/api` to Render with the root build command `npm install && npm run build --workspace @prep/kit-core && npm run build --workspace @prep/api` and start command `npm run start --workspace @prep/api`. The API workspace emits its runtime entry at `apps/api/dist/apps/api/src/server.js`. Configure MongoDB Atlas and all production environment variables in the hosting dashboards only.
+Deploy `apps/web` to Vercel with `NEXT_PUBLIC_API_URL` pointing at the Render API. Deploy `apps/api` to Render with the root build command `npm install && npm run build --workspace @prep/kit-core && npm run build --workspace @prep/api` and start command `npm run start --workspace @prep/api`. The API workspace emits its runtime entry at `apps/api/dist/server.js`. Configure MongoDB Atlas and all production environment variables in the hosting dashboards only.
 
 The API uses MongoDB Atlas when `MONGODB_URI` is configured and an in-process fallback only for local development without a database. Users can register, reopen and delete kits, edit and reorder questions, add or delete questions and flashcards, pin manual content, regenerate a brief or category, practice cards, record confidence, and inspect weak spots. Kit updates use an optimistic version check to avoid overwriting a newer edit.
 
